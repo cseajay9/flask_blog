@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block content %}
+
+        <div class="content-section">
+            <div class="media">
+                <img class="rounded-circle account-img" src=" {{ image_file }}" alt="">
+                <div class="media-body">
+                    <h2 class="account-heading">{{ current_user.username}}</h2>
+                    <p class="text-secondary">{{ current_user.email }}</p>
+                </div>
+            </div>
+        </div>
+
+        <h2>Histories...</h2>
+        <div class="content-section">
+            {% for history in histories: %}
+               <p class="article-content">{{ history.title }} on {{history.date_posted.strftime('%Y-%m-%d : at %H-%M-%S') }}</p>
+            {% endfor %}
+        </div>
+
+{% endblock content %}

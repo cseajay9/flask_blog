@@ -1,7 +1,7 @@
 from flask import render_template, url_for, flash, redirect, request, Blueprint
 from flask_login import login_user, current_user, logout_user, login_required
 from flaskblog import db, bcrypt
-from flaskblog.models import User
+from flaskblog.models import User, Post, AccountUpdateHistory
 from flaskblog.users.forms import RegistrationForm, LoginForm, UpdateAccountForm, RequestResetForm, ResetPasswordForm
 from flaskblog.users.utils import save_picture, send_reset_email
 
@@ -12,14 +12,14 @@ users = Blueprint('users', __name__)
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.home'))
-    form=RegistrationForm()
+    form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(user)
         db.session.commit()
 
-        flash ('Your Account has been created successfully! You can now login', 'success')
+        flash('Your Account has been created successfully! You can now login', 'success')
         return redirect(url_for('users.login'))
     return render_template('register.html', title='Register', form=form)
 
@@ -39,10 +39,12 @@ def login():
             flash('Login Unsuccessful. Please check email and password', 'danger')
     return render_template('login.html', title='Login', form=form)
 
+
 @users.route("/logout")
 def logout():
     logout_user()
     return redirect(url_for('main.home'))
+
 
 @users.route("/account", methods=['GET', 'POST'])
 @login_required
@@ -54,6 +56,9 @@ def account():
             current_user.image_file = picture_file
         current_user.username = form.username.data
         current_user.email = form.email.data
+        db.session.commit()
+        update_history = AccountUpdateHistory(title="You updated your details...", author=current_user)
+        db.session.add(update_history)
         db.session.commit()
         flash('Your account has been updated!', 'success')
         return redirect(url_for('users.account'))
@@ -82,7 +87,7 @@ def reset_request():
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
         send_reset_email(user)
-        flash('An email has been setn with instructions to reset your password. ', 'info')
+        flash('An email has been sent with instructions to reset your password. ', 'info')
         return redirect(url_for('users.login'))
     return render_template('reset_request.html', title='Reset Password', form=form)
 
@@ -101,6 +106,18 @@ def reset_token(token):
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user.password = hashed_password
         db.session.commit()
-        flash ('Your Password has been successfully rest,  You can now login', 'success')
+        flash('Your Password has been successfully rest,  You can now login', 'success')
         return redirect(url_for('users.login'))
     return render_template('reset_token.html', title='Reset Password', form=form)
+
+
+@users.route('/account_history', methods=['GET'])
+def account_history():
+    if not current_user.is_authenticated:
+        return redirect(url_for('main.home'))
+    else:
+        histories = AccountUpdateHistory.query.order_by(AccountUpdateHistory.date_posted.desc()).all()
+
+    image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
+    return render_template('account_history.html', title='Account Update History',
+                           image_file=image_file, histories=histories)
