@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import render_template, url_for, flash, redirect, request, Blueprint
 from flask_login import login_user, current_user, logout_user, login_required
 from flaskblog import db, bcrypt
@@ -53,13 +54,30 @@ def account():
     if form.validate_on_submit():
         if form.picture.data:
             picture_file = save_picture(form.picture.data)
+            if current_user.image_file != picture_file:
+                update_dp = AccountUpdateHistory(title="Profile picture updated ",
+                                                 author=current_user)
+                db.session.add(update_dp)
+                db.session.commit()
+
             current_user.image_file = picture_file
+
+        if form.username.data != current_user.username:
+            update_username = AccountUpdateHistory(title='Username updated ',
+                                                   author=current_user)
+            db.session.add(update_username)
+            db.session.commit()
         current_user.username = form.username.data
+
+        if current_user.email != form.email.data:
+            update_email = AccountUpdateHistory(title='Email updated ', author=current_user )
+            db.session.add(update_email)
+            db.session.commit()
         current_user.email = form.email.data
         db.session.commit()
-        update_history = AccountUpdateHistory(title="You updated your details...", author=current_user)
+        '''update_history = AccountUpdateHistory(title="You updated your details...", author=current_user)
         db.session.add(update_history)
-        db.session.commit()
+        db.session.commit() '''
         flash('Your account has been updated!', 'success')
         return redirect(url_for('users.account'))
     elif request.method == 'GET':
